@@ -1,0 +1,30 @@
+if which direnv >/dev/null 2>&1 ; then
+    if [ "$(uname)" == "Darwin" ]; then
+        brew install direnv
+    if [ "ARCH" == *"$(uname -a)"* ]; then
+        yay -S direnv
+    elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+        echo "Please install direnv with your system package manager." && exit
+    fi
+fi
+
+
+# check if python version is set in current dir
+if [ -f ".python-version" ] ; then
+    if [ ! -d ".venv" ] ; then
+        echo "Installing virtualenv for $(python -V)"
+        # if we didn't install `py2venv` for python 2.x, we would need to use
+        # `virtualenv`, which you would have to install separately.
+        virtualenv .venv
+    fi
+    echo "Activating $(python -V) virtualenv"
+    source .venv/bin/activate
+fi
+
+unset PS1
+
+# announce python version and show the path of the current python in ${PATH}
+echo "Virtualenv has been activated for $(python -V)"
+echo "$(which python)"
+
+# export environment variables here
