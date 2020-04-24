@@ -1,0 +1,17 @@
+name: Shell Scripts Unit Testing
+
+on: [push]
+
+jobs:
+  build:
+    runs-on: [ "ubuntu-latest", "macos-latest" ]
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v2
+    - name: set it up
+      run: |
+        mv envrc ./.envrc
+        . .envrc
+    - name: test it
+      run: |
+        direnv allow
