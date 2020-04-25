@@ -1,0 +1,112 @@
+#!/bin/bash
+
+# stop the script if something fails
+set -e
+
+install_with () {
+    { # try
+        # ARG1 is the installer to use
+        echo "Installing direnv with $1"
+        $1 direnv
+        echo 'eval "$(direnv hook bash)"' >> .bashrc
+    } || { # catch
+        echo "Install failed. Please try installing direnv yourself: https://direnv.net/docs/installation.html"
+    }
+}
+
+direnv_exists() {
+    # returns true if direnv exists
+    if [ command -v direnv >/dev/null 2>&1 ]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+pyenv_exists() {
+    # returns true if pyenv exists
+    if [ command -v pyenv >/dev/null 2>&1 ]; then
+        return 1
+    else
+        return 0
+    fi
+}
+
+if ! [ direnv_exists ] ; then
+    { # try
+        if [ "$(uname)" == "Darwin" ]; then
+            install_with "brew install"
+        elif [[ "$(uname -a)" =~ "ARCH" ]]; then
+            install_with "yay -S" || install "pacman -S"
+            elif [ "$(expr substr $(uname -s) 1 5)" == "Linux" ]; then
+                "sudo apt-get install_with" || echo "Please install direnv with your system package manager." && exit 1
+        fi
+    } || { # catch
+        echo "Something got borked; sorry!"
+        echo "You probably need to figure out how to install_with direnv yourself."
+        exit 1
+    }
+fi
+
+install_venv() {
+    echo "Installing virtualenv for $(python -V)"
+    python -m venv .venv
+}
+
+activate_venv() {
+    echo "Activating $(python -V) virtualenv"
+    source .venv/bin/activate
+}
+
+# check if python version is set in current dir
+if ! [ pyenv_exists ] ; then
+    echo "pyenv not available; installing pyenv"
+    git clone https://github.com/pyenv/pyenv.git ~/.pyenv
+    echo 'export PYENV_ROOT="$HOME/.pyenv"' >> ~/.bash_profile
+    echo 'export PATH="$PYENV_ROOT/bin:$PATH"' >> ~/.bash_profile
+
+    echo "Adding pyenv configs to .bash_profile. If you use .profile, copy the new lines in .bash_profile to .profile"
+    if [ "$(uname)" == "Darwin" ]; then
+        echo -e 'if command -v pyenv 1>/dev/null 2>&1; then\n  eval "$(pyenv init -)"\nfi' >> ~/.profile
+    else
+        echo -e 'if command -v pyenv 1>/dev/null 2>&1; then\n  eval "$(pyenv init -)"\nfi' >> ~/.bash_profile
+    fi
+
+    exec "$SHELL"
+
+    echo "pyenv installed. run 'pyenv --local' to set the local python environment"
+    $(pyenv install 3.6.9)
+    $(pyenv --local 3.6.9)
+fi
+
+if [ ! -d ".venv" ] ; then
+    install_venv
+    activate_venv
+fi
+
+touch .envrc
+
+text='#!/bin/bash
+# check if python version is set in current dir
+if [ -f ".python-version" ] ; then
+    if [ ! -d ".venv" ] ; then
+        echo "Installing virtualenv for $(python -V)"
+        python -m venv .venv
+    fi
+
+    echo "Activating $(python -V) virtualenv"
+    source .venv/bin/activate
+    # announce python version and show the path of the current python in ${PATH}
+    echo "Virtualenv has been activated for $(python -V)"
+    echo "$(which python)"
+fi
+
+
+unset PS1
+
+# export environment variables here:
+# i.e. export PYTHONPATH="some/path"
+'
+
+echo "$text" > .envrc
+
